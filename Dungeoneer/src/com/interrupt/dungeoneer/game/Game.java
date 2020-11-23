@@ -44,10 +44,12 @@ import com.interrupt.utils.OSUtils;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.FileHandler;
 
 public class Game {
 	/** Engine version */
@@ -266,47 +268,59 @@ public class Game {
 
 	    // make the search path match the output of `find .`
 	    String path = directory.path();
-	    if(!path.startsWith("./")) path = "./" + path;
-	    if(path.equals("./assets")) path = "";
-	    if(path.startsWith("./assets")) path = "./" + path.substring(9);
-	    if(!path.endsWith("/")) path += "/";
+	    path = searchPath(path);
 
-        Array<FileHandle> files = new Array<FileHandle>();
+        ArrayList<FileHandle> files = new Array<FileHandle>();
 
         // add external files first
         files.addAll(directory.list());
 
         // then look for internal files
-	    if(Gdx.app.getType() == ApplicationType.Desktop &&
-                (directory.type() == Files.FileType.Classpath) || (directory.type() == Files.FileType.Internal)) {
+	    if(Gdx.app.getType() == ApplicationType.Desktop && (directory.type() == Files.FileType.Classpath) || (directory.type() == Files.FileType.Internal)) {
 
 	    	Gdx.app.log("Delver", "Looking internally");
 
 			String[] packagedFiles = getPackagedFiles();
 
-            for (int i = 0; i < packagedFiles.length; i++) {
-                String s = packagedFiles[i];
-                if (s.startsWith(path)) {
-                    String sub = s.substring(path.length());
-                    if(!sub.contains("/")) {
-                        Gdx.app.debug("Delver", "Found in packaged_files: " + i);
-                        FileHandle f = getInternal(s);
-                        if (f.exists() && !files.contains(f, false)) {
-                            files.add(f);
-                        }
-                    }
-                }
-            }
-        }
+				for (int i = 0; i < packagedFiles.length; i++) {
+					String s = packagedFiles[i];
+					if (s.startsWith(path)) {
+						String sub = s.substring(path.length());
+						if(!sub.contains("/")) {
+							Gdx.app.debug("Delver", "Found in packaged_files: " + i);
+							FileHandle f = getInternal(s);
+							if (f.exists() && !files.contains(f, false)) {
+								files.add(f);
+							}
+						}
+					}
+				}
+	    }
 
         // return as a bare array, like the directory list function
-        files.shrink();
-        FileHandle[] r = new FileHandle[files.size];
-        for(int i = 0; i < files.size; i++) {
-            r[i] = files.get(i);
-        }
+				FileHandle[] r = (files);
         return r;
     }
+
+    public static void lookInternalFiles(){
+
+		}
+
+    public static String searchPath(String path){
+			if(!path.startsWith("./")) path = "./" + path;
+			if(path.equals("./assets")) path = "";
+			if(path.startsWith("./assets")) path = "./" + path.substring(9);
+			if(!path.endsWith("/")) path += "/";
+			return path;
+		}
+
+    public static FileHandle[] returnBareArray(ArrayList<FileHandle> files){
+			files.shrink();
+			FileHandle[] r = new FileHandle[files.size];
+			for(int i = 0; i < files.size; i++) {
+				r[i] = files.get(i);
+			}
+		}
 
     public static Array<FileHandle> findPackagedFiles(String filename) {
 		String[] packagedFiles = getPackagedFiles();
@@ -1351,17 +1365,29 @@ public class Game {
 		}
 
 		// Show the proper bag slots
+		showBagSlots();
+
+		// Refresh the UI
+		refreshUI();
+
+		// Hide the map!
+		hideMap();
+	}
+
+	public void showBagSlots(){
 		Game.bag.visible = menuMode == MenuMode.Inventory;
 		for(EquipLoc loc : hud.equipLocations.values())
 		{
 			loc.visible = menuMode != MenuMode.Hidden;
 		}
+	}
 
-		// Refresh the UI
+	public void refreshUI(){
 		Game.RefreshUI();
 		if(input != null) input.setCursorCatched(menuMode == MenuMode.Hidden);
+	}
 
-		// Hide the map!
+	public void hideMap(){
 		if(Game.instance.getShowingMenu()) {
 			GameManager.renderer.showMap = false;
 		}
